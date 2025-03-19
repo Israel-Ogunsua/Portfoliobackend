@@ -1,3 +1,4 @@
+import  os
 from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
@@ -10,7 +11,8 @@ from datetime import timedelta
 
 # Create the Flask app and configure the database and JWT manager
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///Maindata.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE')
+#postgresql://portfolio_hzed_user:GLUbqnpBcTkJVw9euLmtIcch22gnEdRA@dpg-cvdjrllds78s73b6tvbg-a.oregon-postgres.render.com/portfolio_hzed
 app.config['JWT_SECRET_KEY'] = 'super-secret'  # Change this!
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)  # Set token expiry time
 app.config['PROPAGATE_EXCEPTIONS'] = True
