@@ -1,6 +1,5 @@
-from main import app, db
+from main import app
 
-app = create_app()
 if __name__ == '__main__':
     app.run()
 
