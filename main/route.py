@@ -184,7 +184,7 @@ class EducationResource(Resource):
         current_user_id = get_jwt_identity()
         data = request.get_json()
         education = Education.query.get(data['id'])
-        if education and education.user_id == current_user_id:
+        if education:
             education.degree = data['degree']
             education.institution = data['institution']
             education.period = data['period']
@@ -249,7 +249,7 @@ class CertificationResource(Resource):
         current_user_id = get_jwt_identity()
         data = request.get_json()
         certification = Certification.query.get(data['id'])
-        if certification and certification.user_id == current_user_id:
+        if certification:
             certification.name = data['name']
             certification.issuer = data['issuer']
             certification.date = data['date']
@@ -329,7 +329,7 @@ class BlogPostResource(Resource):
         """Update an existing Blog Post"""
         current_user_id = get_jwt_identity()
         data = request.get_json()
-        post = BlogPost.query.filter_by(id=data['id'], user_id=current_user_id).first()
+        post = BlogPost.query.filter_by(id=data['id']).first()
         
         if not post:
             return {'message': 'Blog post not found or unauthorized'}, 404
@@ -394,12 +394,15 @@ class WorkExperienceResource(Resource):
         } for exp in experiences])
 
     @jwt_required()
+    @api.expect(work_experience_model) 
     def put(self):
         """Update a Work Experience record"""
         current_user_id = get_jwt_identity()
         data = request.get_json()
+        print(data)
         experience = WorkExperience.query.get(data['id'])
-        if experience and experience.user_id == current_user_id:
+        print(experience)
+        if experience:
             experience.title = data['title']
             experience.company = data['company']
             experience.location = data['location']
@@ -411,7 +414,7 @@ class WorkExperienceResource(Resource):
             
             db.session.commit()
             return {'message': 'Work experience updated successfully'}
-        return {'message': 'Work experience not found'}, 404
+        return {'message': 'Work experience not found' + data}, 404
 
     @jwt_required()
     def delete(self):
@@ -528,7 +531,7 @@ class ProjectResource(Resource):
         """Update a Project"""
         data = request.get_json()
         project = Project.query.get(data['id'])
-        if project and project.user_id == get_jwt_identity():
+        if project :
             project.title = data['title']
             project.description = data['description']
             project.image = data.get('image', project.image)
@@ -595,7 +598,7 @@ class ProgrammingSkillsResource(Resource):
         current_user_id = get_jwt_identity()
         data = request.get_json()
         skill = ProgrammingSkill.query.get(data['id'])
-        if skill and skill.user_id == current_user_id:
+        if skill:
             skill.name = data['name']
             skill.level = data['level']
             skill.category = data['category']

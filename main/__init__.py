@@ -11,8 +11,10 @@ from flask_cors import CORS  # Add this import
 # Create the Flask app and configure the database and JWT manager
 app = Flask(__name__)
 # Configure CORS
-CORS(app, resources={r"/api/*": {"origins": ["https://izog.me", "http://localhost:3000"]}})
-
+CORS(app, resources={r"/api/*": {
+    "origins": ["https://izog.me", " http://127.0.0.1:5000"],
+    "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+}})
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE')
 app.config['JWT_SECRET_KEY'] = 'super-secret'  # Change this!
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)  # Set token expiry time
