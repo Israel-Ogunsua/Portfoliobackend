@@ -5,8 +5,8 @@ from main.model import  User, ProgrammingSkill, WorkExperience, Education, Certi
 from flask_jwt_extended import create_access_token, current_user, jwt_required,get_jwt_identity, decode_token, get_jwt
 from flask_restx import Api, Resource, ValidationError, fields
 from marshmallow import Schema, ValidationError, fields as ma_fields
-
-CORS(app, resources={r"/api/*": {"origins": "http://localhost:5173"}}) 
+from main.utils import save_base64_image
+CORS(app, resources={r"/api/*": {"origins": "*"}}) 
 
 # Marshmallow Schemas for Validation
 class UserSchema(Schema):
@@ -280,6 +280,12 @@ class BlogPostResource(Resource):
         """Add a Blog Post"""
         current_user_id = get_jwt_identity()
         data = request.get_json()
+
+        # 🟡 Save the base64 image if provided
+        base64_img = data.get('image')
+        image_url = save_base64_image(base64_img, prefix='blog') if base64_img else ""
+
+        # ✅ Create a new blog post
         new_blogpost = BlogPost(
               title=data['title'],
               content=data['content'],
@@ -287,7 +293,7 @@ class BlogPostResource(Resource):
               category=data.get('category', "Uncategorized"),
               tags=data.get('tags', ""),
               read_time=data.get('read_time', "5 min read"),
-              image=data.get('image', ""),
+              image=image_url,  # ✅ save the image path
               author_name=data.get('author_name', "Unknown Author"),
               author_avatar=data.get('author_avatar', ""),
               featured=data.get('featured', False),
@@ -296,9 +302,11 @@ class BlogPostResource(Resource):
               comments=data.get('comments', 0),
               user_id=current_user_id
         )
+
         db.session.add(new_blogpost)
         db.session.commit()
         return {'message': 'Blog post added successfully'}, 201
+
 
  
     def get(self):
@@ -431,23 +439,41 @@ class WorkExperienceResource(Resource):
 # -----------------------
 # ✅ Projects API
 # -----------------------
-@api.route('/api/projects')
+@api.route('/api/projects', '/api/projects/<int:project_id>')
 class ProjectResource(Resource):
-    @jwt_required()  # Ensure this is directly above the function definition
+    @jwt_required()
     @api.expect(project_model)
     def post(self):
-        """Add a Project"""
-        jwt_data = get_jwt()  # This will work now
-        current_user_id = get_jwt_identity()  # Get the current user's identity
-        
+        """Add a Project with image, screenshots, and features (icons)"""
+        current_user_id = get_jwt_identity()
         data = request.get_json()
+
+        # ✅ Convert single project image
+        image_url = save_base64_image(data.get('image'), prefix='project') if data.get('image') else ""
+
+        # ✅ Convert screenshots
+        screenshots = []
+        for i, snap in enumerate(data.get('screenshots', [])):
+            snap_url = save_base64_image(snap, prefix=f'screenshot_{i}')
+            if snap_url:
+                screenshots.append(snap_url)
+
+        # ✅ Convert feature icons
+        features = []
+        for i, feat in enumerate(data.get('features', [])):
+            icon_url = save_base64_image(feat.get('icon'), prefix=f'feature_{i}') if feat.get('icon') else ""
+            features.append({
+                'title': feat.get('title'),
+                'description': feat.get('description', ''),
+                'icon': icon_url
+            })
 
         new_project = Project(
             title=data['title'],
             description=data['description'],
             long_description=data.get('long_description', ""),
-            image=data.get('image', ""),
-            technologies=",".join(data.get('technologies', [])),  # Convert list to string if needed
+            image=image_url,
+            technologies=data.get('technologies', []),
             purpose=data.get('purpose', ""),
             approach=data.get('approach', ""),
             contribution=data.get('contribution', ""),
@@ -455,112 +481,121 @@ class ProjectResource(Resource):
             github=data.get('github', ""),
             demo=data.get('demo', ""),
             category=data.get('category', "General"),
-            features=data.get('features', []),
-            screenshots=data.get('screenshots', []),
-            tech_stack = data.get('tech_stack', []),
-            user_id=current_user_id,  # Assign project to authenticated user
+            features=features,
+            screenshots=screenshots,
+            tech_stack=data.get('tech_stack', []),
+            user_id=current_user_id,
         )
 
         db.session.add(new_project)
         db.session.commit()
 
         return {'message': 'Project added successfully'}, 201
+
     def get(self, project_id=None):
-        """Retrieve projects (all or by ID)"""
-
-        if project_id:  # Fetch a single project by ID
-            print("Received request for project ID:", project_id)  # Debugging output
-
+        """Retrieve all or single project"""
+        if project_id:
             project = Project.query.get(project_id)
             if not project:
-                print("Project not found!")  # Debugging output
-                return jsonify({'error': 'Project not found'}), 404
+                return {'error': 'Project not found'}, 404
 
-            # Return a single project in JSON format
-            return jsonify({
-                'id': project.id,
-                'title': project.title,
-                'description': project.description,
-                'long_description': project.long_description if project.long_description else "",
-                'image': project.image,
-                'technologies': project.technologies if isinstance(project.technologies, list) else project.technologies.split(',') if project.technologies else [],
-                'purpose': project.purpose if project.purpose else "",
-                'approach': project.approach if project.approach else "",
-                'contribution': project.contribution if project.contribution else "",
-                'results': project.results if project.results else "",
-                'github': project.github if project.github else "",
-                'demo': project.demo if project.demo else "",
-                'category': project.category if project.category else "",
-                'features': project.features if project.features else [],
-                'screenshots': project.screenshots if project.screenshots else [],
-                'tech_stack': project.tech_stack ,
-                'user_id': project.user_id
-            }), 200
+            return jsonify(self.serialize_project(project))
 
-        # If no project_id is provided, return ALL projects
         projects = Project.query.all()
-        
-        return jsonify([
-            {
-                'id': project.id,
-                'title': project.title,
-                'description': project.description,
-                'long_description': project.long_description or "",
-                'image': project.image,
-                'technologies': (project.technologies if isinstance(project.technologies, list) 
-                            else project.technologies.split(',') if project.technologies else []),
-                'purpose': project.purpose or "",
-                'approach': project.approach or "",
-                'contribution': project.contribution or "",
-                'results': project.results or "",
-                'github': project.github or "",
-                'demo': project.demo or "",
-                'category': project.category or "",
-                'features': project.features or [],
-                'screenshots': project.screenshots or [],
-                'tech_stack': project.tech_stack or [],
-                'user_id': project.user_id
-            } for project in projects  # Fixed variable name from 'proj' to 'project'
-        ])
+        return jsonify([self.serialize_project(p) for p in projects])
 
-# Update route
+    def serialize_project(self, project):
+        """Helper to serialize a project"""
+        return {
+            'id': project.id,
+            'title': project.title,
+            'description': project.description,
+            'long_description': project.long_description or "",
+            'image': project.image,
+            'technologies': project.technologies,
+            'purpose': project.purpose or "",
+            'approach': project.approach or "",
+            'contribution': project.contribution or "",
+            'results': project.results or "",
+            'github': project.github or "",
+            'demo': project.demo or "",
+            'category': project.category or "",
+            'features': project.features or [],
+            'screenshots': project.screenshots or [],
+            'tech_stack': project.tech_stack or [],
+            'user_id': project.user_id
+        }
 
     @jwt_required()
-    @api.expect()
+    @api.expect(project_model)
     def put(self):
-        """Update a Project"""
+        """Update an existing Project"""
+        current_user_id = get_jwt_identity()
         data = request.get_json()
         project = Project.query.get(data['id'])
-        if project :
-            project.title = data['title']
-            project.description = data['description']
-            project.image = data.get('image', project.image)
-            project.technologies = data.get('technologies', project.technologies)
-            project.purpose = data.get('purpose', project.purpose)
-            project.approach = data.get('approach', project.approach)
-            project.contribution = data.get('contribution', project.contribution)
-            project.results = data.get('results', project.results)
-            project.github = data.get('github', project.github)
-            project.demo = data.get('demo', project.demo)
-            project.category = data.get('category', project.category)
 
-            db.session.commit()
-            return jsonify({'message': 'Project updated successfully'}), 200
-        return jsonify({'message': 'Project not found or unauthorized'}), 404
+        if not project:
+            return {'message': 'Project not found'}, 404
+
+        # 🔁 Update base fields
+        project.title = data['title']
+        project.description = data['description']
+        project.long_description = data.get('long_description', project.long_description)
+        project.purpose = data.get('purpose', project.purpose)
+        project.approach = data.get('approach', project.approach)
+        project.contribution = data.get('contribution', project.contribution)
+        project.results = data.get('results', project.results)
+        project.github = data.get('github', project.github)
+        project.demo = data.get('demo', project.demo)
+        project.category = data.get('category', project.category)
+        project.technologies = data.get('technologies', project.technologies)
+        project.tech_stack = data.get('tech_stack', project.tech_stack)
+
+        # 🔁 Re-save new images if provided
+        if data.get('image') and "base64" in data['image']:
+            project.image = save_base64_image(data['image'], prefix='project')
+
+        # 🔁 Screenshots
+        if data.get('screenshots'):
+            new_screenshots = []
+            for i, snap in enumerate(data['screenshots']):
+                if snap and "base64" in snap:
+                    snap_url = save_base64_image(snap, prefix=f'screenshot_{i}')
+                    new_screenshots.append(snap_url)
+                else:
+                    new_screenshots.append(snap)  # keep existing URL
+            project.screenshots = new_screenshots
+
+        # 🔁 Features with icons
+        if data.get('features'):
+            updated_features = []
+            for i, feat in enumerate(data['features']):
+                icon = feat.get('icon')
+                if icon and "base64" in icon:
+                    icon_url = save_base64_image(icon, prefix=f'feature_{i}')
+                else:
+                    icon_url = icon
+                updated_features.append({
+                    'title': feat.get('title'),
+                    'description': feat.get('description', ''),
+                    'icon': icon_url
+                })
+            project.features = updated_features
+
+        db.session.commit()
+        return {'message': 'Project updated successfully'}, 200
 
     @jwt_required()
     def delete(self):
-        """Delete a Project"""
+        """Delete a project"""
         project_id = request.args.get('id')
         project = Project.query.get(project_id)
-        if project:
-            db.session.delete(project)
-            db.session.commit()
-            return jsonify({'message': 'Project deleted successfully'})
-        return jsonify({'message': 'Project not found'}), 404
+        if not project:
+            return {'message': 'Project not found'}, 404
 
-api.add_resource(ProjectResource, '/api/projects', '/api/projects/<int:project_id>')
-
+        db.session.delete(project)
+        db.session.commit()
+        return {'message': 'Project deleted successfully'}
 
 # -----------------------
 # ✅ Programming Skills API
