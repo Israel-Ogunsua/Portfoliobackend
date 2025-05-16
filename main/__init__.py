@@ -41,8 +41,8 @@ def after_request(response):
     return response
 
 # === DATABASE CONFIG ===
-# app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE')
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://portfolio_hzed_user:GLUbqnpBcTkJVw9euLmtIcch22gnEdRA@dpg-cvdjrllds78s73b6tvbg-a.oregon-postgres.render.com/portfolio_hzed'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE')
+#app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://portfolio_hzed_user:GLUbqnpBcTkJVw9euLmtIcch22gnEdRA@dpg-cvdjrllds78s73b6tvbg-a.oregon-postgres.render.com/portfolio_hzed'
 app.config['JWT_SECRET_KEY'] = 'super-secret'
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)
 app.config['PROPAGATE_EXCEPTIONS'] = True
