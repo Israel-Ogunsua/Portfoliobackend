@@ -17,10 +17,8 @@ from io import BytesIO
 app = Flask(__name__, static_folder="static", static_url_path="/static")
 
 # Configure CORS
-CORS(app, resources={r"/api/*": {
-    "origins": ["*"],
-    "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-}})
+
+CORS(app, resources={r"/api/*": {"origins": ["https://izog.me"], "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"]}})
 
 # Static file routes (still valid for non-Cloudinary fallback)
 @app.route('/static/uploads/projects/<path:filename>')
@@ -33,7 +31,6 @@ def serve_static(path):
 
 @app.after_request
 def after_request(response):
-    response.headers.add('Access-Control-Allow-Origin', '*')
     response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
     response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
     return response
