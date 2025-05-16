@@ -9,9 +9,14 @@ from datetime import timedelta
 from flask_cors import CORS
 import cloudinary
 import cloudinary.uploader
-import cloudinary.api
 import base64
 from io import BytesIO
+
+from dotenv import load_dotenv
+load_dotenv()
+
+print("Cloudinary config:", os.getenv("CLOUDINARY_API_KEY"))
+
 
 # Create the Flask app and configure the database and JWT manager
 app = Flask(__name__, static_folder="static", static_url_path="/static")
@@ -36,8 +41,8 @@ def after_request(response):
     return response
 
 # === DATABASE CONFIG ===
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE')
-#app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://portfolio_hzed_user:GLUbqnpBcTkJVw9euLmtIcch22gnEdRA@dpg-cvdjrllds78s73b6tvbg-a.oregon-postgres.render.com/portfolio_hzed'
+# app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://portfolio_hzed_user:GLUbqnpBcTkJVw9euLmtIcch22gnEdRA@dpg-cvdjrllds78s73b6tvbg-a.oregon-postgres.render.com/portfolio_hzed'
 app.config['JWT_SECRET_KEY'] = 'super-secret'
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)
 app.config['PROPAGATE_EXCEPTIONS'] = True
@@ -50,9 +55,9 @@ migrate = Migrate(app, db)
 
 # === CLOUDINARY CONFIG ===
 cloudinary.config(
-    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME", "your_cloud_name"),
-    api_key=os.getenv("CLOUDINARY_API_KEY", "your_api_key"),
-    api_secret=os.getenv("CLOUDINARY_API_SECRET", "your_api_secret"),
+    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.getenv("CLOUDINARY_API_KEY"),
+    api_secret=os.getenv("CLOUDINARY_API_SECRET"),
     secure=True
 )
 
